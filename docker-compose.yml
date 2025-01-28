@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15
+    container_name: malabar-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123123
+      POSTGRES_DB: malabar_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db_init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d malabar_db"]
+      interval: 5s
+      retries: 5
+
+  app:
+    build: .
+    image: malabar-ai
+    container_name: malabar-ai-container
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy  # ✅ This is allowed in v3.9
+    environment:
+      DATABASE_URL: postgresql://postgres:123123@db:5432/malabar_db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/models
+    command: uvicorn exploreapiwithvolume:app --host 0.0.0.0 --port 8000
+
+volumes:
+  postgres_data:
